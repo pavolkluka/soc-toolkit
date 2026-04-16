@@ -1,0 +1,11 @@
+CLAUDE.md
+temp/
+venv-setup/venv/
+*.pyc
+__pycache__/
+artifacts/
+output/
+malicious/
+*.log
+secrets/
+.malwapi.conf
