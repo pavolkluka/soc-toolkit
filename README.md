@@ -64,4 +64,8 @@ cd soc-toolkit
 
 ## Support
 
-If my work helped you: [Lightning tip via Hydranode](https://hydranode.org/btcpay/apps/3eaaJ6N3NvEDSvkhWfLGR3Zxf1GN/pos)
+If you want to support me, you can do so in satoshi. Use the Lightning Network.
+
+<a href="https://hydranode.org/btcpay/apps/3eaaJ6N3NvEDSvkhWfLGR3Zxf1GN/pos" target="_blank" rel="noopener noreferrer">
+  <img src="images/hydranode_donation_button_black.png" alt="Pay with Hydranode">
+</a>

@@ -5,6 +5,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **README.md**: Support section replaced with Hydranode Lightning donation
+  button (`images/hydranode_donation_button_black.png`) wrapped in an HTML
+  `<a target="_blank" rel="noopener noreferrer">` anchor so clicks open in a
+  new tab (GitHub markdown does not honor `target` on `[text](url)` syntax).
+  Accompanying text changed to "If you want to support me, you can do so in
+  satoshi. Use the Lightning Network."
+
 ### Fixed
 
 - **file-triage.sh v0.4.1**: triage-dynamic output no longer overwrites the
