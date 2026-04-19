@@ -289,9 +289,9 @@ COUNTER=$((COUNTER + 1))
 
 ### 002 DETECT-IT-EASY
 echo ""
-log_info "Detect-It-Easy (deepscan)..."
+log_info "Detect-It-Easy (deepscan + heuristicscan)..."
 DIE_OUTFILE="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-die.txt"
-if diec --deepscan "${PATH_FILE}" > "${DIE_OUTFILE}"; then
+if diec --deepscan --heuristicscan "${PATH_FILE}" > "${DIE_OUTFILE}"; then
     log_info "Detect-It-Easy output saved to: ${DIE_OUTFILE}"
 else
     log_warn "Detect-It-Easy exited non-zero — output may be partial: ${DIE_OUTFILE}"
@@ -364,7 +364,16 @@ if [[ -n "${TRIAGE_IDS}" ]]; then
         if malwoverview -x 7 -X "${ID}" 2>&1 | strip_ansi > "${TRIAGE_DYN_OUTFILE}"; then
             log_info "Malwoverview (triage dynamic ID: ${ID}) saved to: ${TRIAGE_DYN_OUTFILE}"
         else
-            log_warn "Malwoverview (triage dynamic ID: ${ID}) exited non-zero: ${TRIAGE_DYN_OUTFILE}"
+            DYN_RC=$?
+            log_warn "Malwoverview (triage dynamic ID: ${ID}) exited non-zero (rc=${DYN_RC}): ${TRIAGE_DYN_OUTFILE}"
+            # Replace noisy Python traceback with a short sanitized note (upstream bug
+            # in malwoverview triage_dynamic when Tria.ge response has no 'tags' field).
+            cat > "${TRIAGE_DYN_OUTFILE}" <<EOF
+malwoverview -x 7 -X ${ID} failed with exit code ${DYN_RC}.
+If the traceback showed "TypeError: 'NoneType' object is not iterable" in
+malwoverview/modules/triage.py triage_dynamic, it is a known upstream bug
+that occurs when the Tria.ge response has no 'tags' field.
+EOF
         fi
         COUNTER=$((COUNTER + 1))
     done <<< "${TRIAGE_IDS}"
