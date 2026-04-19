@@ -14,7 +14,7 @@ set -euo pipefail
 
 ### CONSTANTS
 SCRIPT_NAME="file-triage.sh"
-SCRIPT_VERSION="0.4.0"
+SCRIPT_VERSION="0.4.1"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATE_SHORT="$(date +"%Y-%m-%d")"
 DATE_LONG="$(date +"%Y-%m-%d %H:%M")"
@@ -203,8 +203,10 @@ run_flare_tools() {
         if command -v floss > /dev/null 2>&1; then
             local floss_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-floss.txt"
             local rc=0
+            # --disable-progress: suppress tqdm progress bars (advanced flag, see `floss -H`)
+            # --quiet: suppress "analyzing program..." status on stdout
             run_polled "floss" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${floss_outfile}" \
-                floss --no static -- "${PATH_FILE}" || rc=$?
+                floss --disable-progress --quiet --no static -- "${PATH_FILE}" || rc=$?
             report_polled_rc "floss" "${rc}" "${floss_outfile}"
             COUNTER=$((COUNTER + 1))
         else
@@ -223,15 +225,22 @@ run_flare_tools() {
         report_polled_rc "capa" "${rc}" "${capa_outfile}"
         COUNTER=$((COUNTER + 1))
 
-        # FLARE capa -vv (very verbose, includes evidence)
+        # FLARE capa -vv (very verbose, includes evidence) — skip if default capa
+        # already failed with "unsupported OS" (stripped / custom ELFs), since -vv
+        # would produce identical error output at cost of another poll cycle.
         echo ""
-        log_info "FLARE capa (-vv very verbose)..."
-        local capa_vv_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-capa-vv.txt"
-        rc=0
-        run_polled "capa -vv" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${capa_vv_outfile}" \
-            capa -vv "${PATH_FILE}" || rc=$?
-        report_polled_rc "capa -vv" "${rc}" "${capa_vv_outfile}"
-        COUNTER=$((COUNTER + 1))
+        # Rich console wraps the error; match a phrase guaranteed to stay on one line.
+        if grep -q "does not appear to target a supported" "${capa_outfile}" 2>/dev/null; then
+            log_warn "FLARE capa (-vv): skipped — default capa could not identify target OS (same input would produce identical error)."
+        else
+            log_info "FLARE capa (-vv very verbose)..."
+            local capa_vv_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-capa-vv.txt"
+            rc=0
+            run_polled "capa -vv" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${capa_vv_outfile}" \
+                capa -vv "${PATH_FILE}" || rc=$?
+            report_polled_rc "capa -vv" "${rc}" "${capa_vv_outfile}"
+            COUNTER=$((COUNTER + 1))
+        fi
     else
         log_warn "capa not found — skipping (install: pipx install flare-capa)."
     fi
@@ -443,9 +452,15 @@ if [[ -n "${TRIAGE_IDS}" ]]; then
         else
             DYN_RC=$?
             log_warn "Malwoverview (triage dynamic ID: ${ID}) exited non-zero (rc=${DYN_RC}): ${TRIAGE_DYN_OUTFILE}"
-            # Replace noisy Python traceback with a short sanitized note (upstream bug
-            # in malwoverview triage_dynamic when Tria.ge response has no 'tags' field).
-            cat > "${TRIAGE_DYN_OUTFILE}" <<EOF
+            # Preserve partial report content up to the Python traceback (header and
+            # analysis metadata remain useful), then append a sanitized note.
+            # The traceback can appear mid-line (e.g. inlined after "tags:      "),
+            # so awk trims from the Traceback marker forward including mid-line hits.
+            awk '/Traceback \(most recent call last\):/ {sub(/Traceback \(most recent call last\):.*/, ""); print; exit} {print}' \
+                "${TRIAGE_DYN_OUTFILE}" > "${TRIAGE_DYN_OUTFILE}.tmp" && mv "${TRIAGE_DYN_OUTFILE}.tmp" "${TRIAGE_DYN_OUTFILE}"
+            cat >> "${TRIAGE_DYN_OUTFILE}" <<EOF
+
+---
 malwoverview -x 7 -X ${ID} failed with exit code ${DYN_RC}.
 If the traceback showed "TypeError: 'NoneType' object is not iterable" in
 malwoverview/modules/triage.py triage_dynamic, it is a known upstream bug
