@@ -14,7 +14,7 @@ set -euo pipefail
 
 ### CONSTANTS
 SCRIPT_NAME="file-triage.sh"
-SCRIPT_VERSION="0.3.0"
+SCRIPT_VERSION="0.4.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATE_SHORT="$(date +"%Y-%m-%d")"
 DATE_LONG="$(date +"%Y-%m-%d %H:%M")"
@@ -34,6 +34,12 @@ SHA256=""
 TMPFILE=""
 COUNTER=1
 COUNTER_INITIAL=1
+
+# Hard cap for long-running FLARE analyses (floss, capa). Files larger than
+# ~500 MB or adversarial samples can cause these tools to run for hours.
+FLARE_MAX_SECS=1800
+FLARE_POLL_INTERVAL=30
+FLARE_LARGE_FILE_BYTES=$((500 * 1024 * 1024))
 
 ### FUNCTIONS
 
@@ -58,8 +64,8 @@ Output files (numbered, format: NNN-<filename>-<stage>.txt):
   005 strings
   006+ Malwoverview: VirusTotal, Tria.ge (+ per-ID reports), AlienVault OTX, Malware Bazaar
   NNN+ Format-specific:
-    PE:    PortEx Analyzer
-    ELF:   readelf -a, nm -D
+    PE:    PortEx Analyzer, FLARE floss (--no static), FLARE capa, FLARE capa -vv
+    ELF:   readelf -a, nm -D, FLARE capa, FLARE capa -vv (floss is PE-only)
     PDF:   pdfid.py, peepdf
     RTF:   rtfobj, oleobj
     OLE:   oledump.py, oleobj
@@ -158,6 +164,77 @@ run_malwoverview() {
         log_warn "Malwoverview (${label}) exited non-zero — output may be partial: ${outfile}"
     fi
     COUNTER=$((COUNTER + 1))
+}
+
+### FLARE helpers
+# Report the run_polled return code as an appropriate log line for the given tool.
+report_polled_rc() {
+    local label="$1"
+    local rc="$2"
+    local outfile="$3"
+    case "${rc}" in
+        0) log_info "${label} output saved to: ${outfile}" ;;
+        1) log_warn "${label} exited non-zero — output may be partial: ${outfile}" ;;
+        2) log_warn "${label} terminated by timeout cap (${FLARE_MAX_SECS}s) — output may be partial: ${outfile}" ;;
+        3) log_warn "${label} produced no output: ${outfile}" ;;
+        *) log_warn "${label} returned unexpected status rc=${rc}: ${outfile}" ;;
+    esac
+}
+
+# Runs capa (PE + ELF) and, for PE only, floss (--no static). floss does not
+# support ELF string decoding (FLOSS only supports PE), so it is skipped for ELF.
+# Uses run_polled with a hard cap to prevent hangs on oversized or adversarial
+# samples.
+#
+# Usage: run_flare_tools <format>   where <format> is "pe" or "elf"
+run_flare_tools() {
+    local format="$1"
+    local fsize
+    fsize=$(stat -c %s "${PATH_FILE}" 2>/dev/null || echo 0)
+    if (( fsize > FLARE_LARGE_FILE_BYTES )); then
+        log_warn "File size $((fsize / 1024 / 1024)) MB exceeds 500 MB — FLARE tools may be slow or hit the ${FLARE_MAX_SECS}s cap."
+    fi
+
+    # FLARE floss — PE only. floss rejects ELF with:
+    #   "FLOSS currently supports the following formats for string decoding: PE"
+    if [[ "${format}" == "pe" ]]; then
+        echo ""
+        log_info "FLARE floss (--no static): stack+tight+decoded strings..."
+        if command -v floss > /dev/null 2>&1; then
+            local floss_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-floss.txt"
+            local rc=0
+            run_polled "floss" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${floss_outfile}" \
+                floss --no static -- "${PATH_FILE}" || rc=$?
+            report_polled_rc "floss" "${rc}" "${floss_outfile}"
+            COUNTER=$((COUNTER + 1))
+        else
+            log_warn "floss not found — skipping (install: pipx install flare-floss)."
+        fi
+    fi
+
+    # FLARE capa (default)
+    echo ""
+    log_info "FLARE capa (default)..."
+    if command -v capa > /dev/null 2>&1; then
+        local capa_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-capa.txt"
+        local rc=0
+        run_polled "capa" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${capa_outfile}" \
+            capa "${PATH_FILE}" || rc=$?
+        report_polled_rc "capa" "${rc}" "${capa_outfile}"
+        COUNTER=$((COUNTER + 1))
+
+        # FLARE capa -vv (very verbose, includes evidence)
+        echo ""
+        log_info "FLARE capa (-vv very verbose)..."
+        local capa_vv_outfile="${DIR_OUTPUT}/$(format_counter "${COUNTER}")-${SCRIPT_ARG_FILE}-capa-vv.txt"
+        rc=0
+        run_polled "capa -vv" "${FLARE_MAX_SECS}" "${FLARE_POLL_INTERVAL}" "${capa_vv_outfile}" \
+            capa -vv "${PATH_FILE}" || rc=$?
+        report_polled_rc "capa -vv" "${rc}" "${capa_vv_outfile}"
+        COUNTER=$((COUNTER + 1))
+    else
+        log_warn "capa not found — skipping (install: pipx install flare-capa)."
+    fi
 }
 
 cleanup() {
@@ -411,6 +488,8 @@ case "${FILE_TYPE}" in
         else
             log_warn "portex not found — skipping PE-specific analysis."
         fi
+
+        run_flare_tools "${FILE_TYPE}"
         ;;
     elf)
         echo ""
@@ -440,6 +519,8 @@ case "${FILE_TYPE}" in
         else
             log_warn "nm not found — skipping."
         fi
+
+        run_flare_tools "${FILE_TYPE}"
         ;;
     pdf)
         echo ""

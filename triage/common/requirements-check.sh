@@ -54,6 +54,8 @@ TIER2_PIPX=(
     "oleobj|oletools"
     "lnkparse|LnkParse3"
     "peepdf|peepdf3"
+    "floss|flare-floss"
+    "capa|flare-capa"
 )
 
 # Tier 3: external downloads (no auto-install) — "<cmd>|<URL>|<hint>"
@@ -78,7 +80,7 @@ Usage: ${SCRIPT_NAME} [--install-deps | --check-only] [-h|--help]
 
 Checks soc-toolkit triage dependencies across three tiers:
   Tier 1: apt-installable (file, exiftool, binutils, unzip, p7zip, unrar, coreutils)
-  Tier 2: pipx-installable (malwoverview, oletools, LnkParse3, peepdf3)
+  Tier 2: pipx-installable (malwoverview, oletools, LnkParse3, peepdf3, flare-floss, flare-capa)
   Tier 3: manual downloads (diec, trid, portex, oledump.py, pdfid.py)
 
 Also validates ~/.malwapi.conf and counts configured API keys
