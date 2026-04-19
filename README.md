@@ -39,7 +39,7 @@ git clone https://github.com/pavolkluka/soc-toolkit
 cd soc-toolkit
 
 # Check dependencies (bash scripts)
-./triage/common/requirements-check.sh file-triage
+./triage/common/requirements-check.sh --check-only
 
 # Setup Python venv (for Python tools)
 ./venv-setup/setup.sh
