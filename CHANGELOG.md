@@ -98,6 +98,27 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   non-informational Hayabusa detections, 10,802 Chainsaw detections.
 - **.gitignore**: `evtx/bin/` and `evtx/rules/` excluded — downloaded
   binaries and Sigma rules are never committed.
+- **notebooks/timeline-template.ipynb**: Jupyter template for
+  `001-hayabusa-timeline.csv` (output of `evtx/evtx-triage.sh`). Six cell
+  groups: load (path from `SOC_TIMELINE_CSV` env var, no hardcoded path),
+  overview (Level/Channel/Computer counts, time range), parametric filters
+  (level, time window, computer, keyword), visualisation (msticpy
+  `display_timeline` plus a matplotlib fallback), IOC extraction
+  (IPv4/domain/hash regex, dedup'd for `lookup/soc-lookup`), and an exported
+  markdown summary, auto-numbered after the triage run's `001`-`004`
+  outputs. Committed with cleared outputs (real event data, public repo).
+  Hayabusa `Level`/`Channel` are abbreviated (`crit`/`high`/`med`/`low`/
+  `info`, `Sec`/`Sys`/`Sysmon`) — filtering uses an explicit ordinal map, not
+  a string match. `Timestamp` carries the source host's local offset, not
+  UTC — parsed with `utc=True`. Uses `display_timeline` directly, not the
+  `mp_plot.timeline()` accessor from `handoff-f6-toolkit.md` §6 (needs
+  `init_notebook()`, warns on missing config); no msticpy config required,
+  so the nbconvert risk in handoff §9 doesn't apply. The §6.5 domain regex
+  matched Windows filenames; a denylist filters most, some .NET identifiers
+  still slip through (known limitation). Verified on REMnux (Ubuntu
+  24.04.3) against the 32,377-row full-corpus CSV — 7.2s, 3,689 IOCs; also
+  run on Debian 12 on a smaller sample.
+- **.gitignore**: `notebooks/.ipynb_checkpoints/`.
 
 ### Changed
 
