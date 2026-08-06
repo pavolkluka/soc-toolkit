@@ -32,6 +32,37 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **.gitignore**: now also excludes `.claude/` (local Claude Code tooling and
   agent scratch state, not project content), placed directly beneath the
   existing `CLAUDE.md` rule for the same reason.
+- **lookup/soc-lookup.py** / **lookup/soc-lookup**: combined IntelOwl + Yeti
+  IOC lookup CLI (`soc-lookup <observable>`). Autodetects
+  `ip|domain|hash|url` (falls back to `generic`; `--type` overrides), queries
+  both sources in parallel (`ThreadPoolExecutor(max_workers=2)`) and
+  aggregates results with a `source_ref` per source
+  (`yeti:observable/<id>`, `yeti:entity/<id>`, `intelowl:job/<id>`). Config
+  via `SOC_YETI_URL`/`SOC_YETI_APIKEY`/`SOC_INTELOWL_URL`/
+  `SOC_INTELOWL_TOKEN` or `secrets/soc-lookup.env` (gitignored), validated
+  only for the branch(es) actually requested. Exit codes: `0` OK (including
+  a legitimate "not found"), `1` API/auth error, `2` IntelOwl job-poll
+  timeout, `3` bad args/config. `--json` writes the aggregate to stdout
+  only; rich tables and summary always render on stderr, so `| jq` works.
+  Yeti output shows observable tags/context plus related nodes (via a
+  follow-up `POST /api/v2/graph/search` call — the search response itself
+  has no `entities` key, which is what produces `yeti:entity/<id>`);
+  IntelOwl output shows the per-analyzer breakdown and job warnings.
+  `already_exists` is surfaced so a cached result is distinguishable from a
+  fresh one.
+
+  Two deviations from `handoff-f6-toolkit.md` §3, both confirmed against
+  live IntelOwl v6.7.0 and Yeti 2.5.1 on 2026-08-06 (handoff §8B
+  criterion 1):
+  - `--playbook` default is `WB_Lookup`, not the handoff's `WB-Lookup` —
+    IntelOwl restricts playbook names to `[A-Za-z0-9_]` and rejects hyphens.
+  - `--force` sends `"scan_mode": 1`, not the handoff's
+    `"check_analysis_availability"` — that field is silently ignored by
+    IntelOwl, so `--force` would have appeared to work while still
+    returning cached results.
+
+  Full live-verification evidence (per-item confirmation status) lives in
+  `handoff-f6-findings.md`, outside this repo.
 
 ### Changed
 
