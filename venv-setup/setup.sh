@@ -4,8 +4,9 @@
 #
 # Usage:   setup.sh [--check-only] [-h|--help]
 #
-# Tested on: Debian 12 (Python 3.11.2)
-# Note:      REMnux 7 (Ubuntu 20.04.6, Python 3.8.10) is NOT supported —
+# Tested on: REMnux 2026 (Ubuntu 24.04.3 LTS, Python 3.12.3, primary),
+#            Debian 12 (Python 3.11.2)
+# Note:      Older REMnux 7 (Ubuntu 20.04.6, Python 3.8.10) is NOT supported —
 #            requirements.txt needs Python >= 3.10. See docs/remnux-notes.md.
 # Version:   0.1.0
 # Author:    Pavol Kluka | https://github.com/pavolkluka/soc-toolkit

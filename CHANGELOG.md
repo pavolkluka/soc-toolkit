@@ -23,9 +23,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `packaging>=24.0` and resolves cleanly; `msticpy.vis.timeline.display_timeline`
   (needed by the TASK-12 timeline notebook) was confirmed still present and
   importable in the built venv.
-- **docs/remnux-notes.md**: documented why `venv-setup/setup.sh` cannot run
-  on the REMnux VM (Python >= 3.10 requirement vs. REMnux 7's Python
-  3.8/3.9) — see "Python version limitation (F6 toolkit / venv-setup)".
+- **docs/remnux-notes.md**: documented the Python >= 3.10 requirement for
+  `venv-setup/setup.sh` — the primary REMnux 2026 target
+  (`03-remnux-noble-202602`, Ubuntu 24.04.3, Python 3.12.3) satisfies it and
+  passes the full TASK-08 QA gate; the older REMnux 7 target
+  (`03-remnux-7-202510`, Python 3.8.10) does not — see "Python version
+  requirement (F6 toolkit / venv-setup)".
 
 ### Changed
 
