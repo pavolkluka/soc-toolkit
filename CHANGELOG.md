@@ -119,6 +119,35 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   24.04.3) against the 32,377-row full-corpus CSV — 7.2s, 3,689 IOCs; also
   run on Debian 12 on a smaller sample.
 - **.gitignore**: `notebooks/.ipynb_checkpoints/`.
+- **docs/atomic-validation.md**: new document — Atomic Red Team validation
+  workflow (install Invoke-AtomicRedTeam on a lab victim VM, map a
+  `detection/rules/` Sigma rule's ATT&CK tag to atomic tests, run + confirm
+  the detection fired via `evtx/evtx-triage.sh` Chainsaw output or the AQL
+  from `detection/sigma-to-aql.sh`, then clean up). Opens with an explicit
+  provenance note: none of the commands in this document have been executed
+  or verified in this project — no Windows or pwsh victim VM was available —
+  they are transcribed from `handoff-f6-toolkit.md` §7 and upstream
+  Invoke-AtomicRedTeam documentation, unlike the rest of this repo's docs,
+  which record measured facts. States up front that atomics are never run
+  on the workbench host, lab victim VM only.
+- **docs/methodology.md**: added "EVTX Triage Workflow" (`get-tools.sh` once
+  → `evtx-triage.sh` → numbered run directory → timeline notebook, which
+  appends its markdown summary as the next numbered output) and "IOC Lookup
+  Workflow" (observable → `soc-lookup` → Yeti + IntelOwl results with a
+  `source_ref` per source, prerequisite: the `WB_Lookup` playbook)
+  sections. The existing PCAP and Windows-events placeholder sections
+  (reserved for TASK-06/TASK-07) are unchanged.
+- **docs/tool-deps.md**: added "soc-lookup" (Python deps, env vars, the
+  IntelOwl/Yeti API contract as implemented, and a "Prerequisite: the
+  WB_Lookup playbook" subsection with a working `curl` example for
+  recreating it), "EVTX toolchain" (pinned versions, operational facts,
+  confirms Takajo 2.16.1 reads Hayabusa 4.0.0 super-verbose JSONL correctly
+  — no Hayabusa 3.x downgrade fallback needed — and a Hayabusa CSV quirks
+  list), and "notebooks" (jupyterlab/pandas/matplotlib/msticpy deps, why
+  msticpy is pinned at 3.0.0 not 3.0.2, why no msticpy config is required,
+  the input contract, and the IOC-regex known limitation) sections, placed
+  in repo directory order alongside the existing file-triage.sh and
+  sigma-to-aql.sh sections.
 
 ### Changed
 
@@ -128,6 +157,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   new tab (GitHub markdown does not honor `target` on `[text](url)` syntax).
   Accompanying text changed to "If you want to support me, you can do so in
   satoshi. Use the Lightning Network."
+- **README.md**: added sections for `soc-lookup`, `evtx-triage.sh` (naming
+  `get-tools.sh` as the required first step), `sigma-to-aql.sh`, and
+  `notebooks/timeline-template.ipynb`, in the style of the existing
+  entries, placed before the `pcap-triage.py` / `windows-events-triage.py`
+  "coming soon" entries. Added `docs/atomic-validation.md` to the
+  Documentation list. The `venv-setup/setup.sh` reference was checked
+  against the repo and is already correct — `venv-setup/setup.sh` exists
+  (TASK-08); no correction was needed.
 
 ### Fixed
 

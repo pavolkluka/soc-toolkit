@@ -20,6 +20,66 @@ Results are saved to a structured `output/` directory.
 ./triage/file-triage.sh -i suspicious_file.docx
 ```
 
+### soc-lookup
+
+Combined IntelOwl + Yeti IOC lookup in one command. Autodetects the
+observable type (ip/domain/hash/url, falling back to generic), queries both
+sources in parallel, and aggregates the result with a `source_ref` per
+source (`yeti:observable/<id>`, `yeti:entity/<id>`, `intelowl:job/<id>`) for
+traceability into IRIS.
+
+**Requirements:** `venv-setup/setup.sh` run first; IntelOwl and Yeti
+reachable and configured — see
+[docs/tool-deps.md](docs/tool-deps.md#soc-lookup)
+
+```bash
+./lookup/soc-lookup 8.8.8.8
+./lookup/soc-lookup <sha256_hash> --json | jq
+```
+
+### evtx-triage.sh
+
+Hayabusa + Takajo + Chainsaw EVTX triage in one command: a Hayabusa
+`dfir-timeline` CSV timeline (for the timeline notebook), a Hayabusa
+super-verbose JSONL timeline (for Takajo), a Takajo `automagic` run, and a
+Chainsaw Sigma hunt — all written into one timestamped run directory.
+
+**Requirements:** run `evtx/get-tools.sh` once first, to download the
+pinned binaries and Sigma rules — see [docs/tool-deps.md](docs/tool-deps.md)
+
+```bash
+./evtx/get-tools.sh
+./evtx/evtx-triage.sh -i /path/to/evtx_dir
+```
+
+### sigma-to-aql.sh
+
+Converts one Sigma rule, or every rule in a directory, to IBM QRadar AQL for
+copy-paste into the QRadar console.
+
+**Requirements:** `venv-setup/setup.sh` run first (installs sigma-cli +
+pysigma-backend-qradar-aql) — see
+[docs/tool-deps.md](docs/tool-deps.md#sigma-to-aqlsh)
+
+```bash
+./detection/sigma-to-aql.sh detection/rules/encoded-powershell-command.yml
+```
+
+### timeline-template.ipynb
+
+Jupyter notebook for interactive review of a Hayabusa `dfir-timeline` CSV —
+overview counts, parametric filters, msticpy/matplotlib visualisation, IOC
+extraction, and a markdown summary export. A lightweight Timesketch
+replacement for the common case.
+
+**Requirements:** `venv-setup/setup.sh` run first; input is
+`001-hayabusa-timeline.csv` from `evtx/evtx-triage.sh`
+
+```bash
+source venv-setup/venv/bin/activate
+jupyter lab notebooks/timeline-template.ipynb
+```
+
 ### pcap-triage.py *(coming soon)*
 
 PCAP analysis: protocol dissection, IOC extraction, C2 communication detection,
@@ -52,6 +112,7 @@ cd soc-toolkit
 - [Triage Methodology](docs/methodology.md)
 - [Tool Dependencies](docs/tool-deps.md)
 - [REMnux Notes](docs/remnux-notes.md)
+- [Atomic Validation Workflow](docs/atomic-validation.md)
 
 ---
 
