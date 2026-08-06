@@ -63,6 +63,23 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
   Full live-verification evidence (per-item confirmation status) lives in
   `handoff-f6-findings.md`, outside this repo.
+- **detection/sigma-to-aql.sh**: converts one Sigma rule or a whole
+  directory to QRadar AQL. Writes `detection/output/<rule>.aql` and echoes
+  the AQL to stdout for copy-paste into the QRadar console; all logging
+  goes to stderr so stdout carries only AQL and can be piped. Default
+  pipeline `qradar-aql-payload`; `--fields` switches to `qradar-aql-fields`;
+  `-o` overrides the output directory. Directory mode does not abort on a
+  bad rule — it counts failures, converts the rest, and exits non-zero.
+- **detection/rules/encoded-powershell-command.yml**: one sample Sigma
+  rule, written from scratch (not derived from SigmaHQ), detecting encoded
+  PowerShell execution. Matches the full valid parameter-prefix range from
+  `-e` to `-encodedcommand`, since PowerShell accepts any unambiguous
+  prefix and a rule matching only the long spellings is trivially bypassed.
+- Deviation from `handoff-f6-toolkit.md` §5: the conversion target is
+  `q_radar_aql`, not the handoff's `ibm-qradar-aql`, which sigma-cli
+  rejects outright — verifiable via `sigma list targets`.
+- Verified on REMnux (Ubuntu 24.04.3, Python 3.12.3) and Debian 12 (Python
+  3.11.2), with the generated AQL byte-identical on both.
 - **evtx/get-tools.sh**: downloads pinned forensic binaries into `evtx/bin/`
   and clones SigmaHQ rules into `evtx/rules/`. Versions are header variables:
   Hayabusa 4.0.0 (musl), Takajo 2.16.1, Chainsaw 2.16.3, DuckDB 1.4.4,

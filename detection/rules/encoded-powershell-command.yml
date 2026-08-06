@@ -1,0 +1,56 @@
+title: Encoded PowerShell Command Execution
+id: 2bc9cd35-20f9-4bc2-b986-17d21c69f3bb
+status: experimental
+description: |
+    Detects execution of powershell.exe / pwsh.exe with an -EncodedCommand
+    argument, a common technique for obfuscating malicious command lines and
+    evading simple plaintext keyword detection.
+
+    Prefix-range note: PowerShell's command-line parser accepts any
+    unambiguous prefix of a full parameter name, so -EncodedCommand can be
+    legally abbreviated as -enc, -encod, -encode, etc. A rule that only
+    matches the two long-form spellings ("-enc" and "-encodedcommand") looks
+    functional but is trivially bypassed by using a different, still-valid
+    prefix such as "-encod". This rule therefore matches the full prefix
+    range from the single-character "-e" up to the complete
+    "-encodedcommand" spelling. "-e" is included deliberately: it is the
+    form most commonly seen in real intrusions, and omitting it would leave
+    the shortest and most-used bypass uncovered. It does overlap with other
+    powershell.exe parameters beginning with "e" (notably -ExecutionPolicy),
+    so environments that legitimately invoke PowerShell that way should
+    expect some noise from this arm and tune accordingly.
+author: Pavol Kluka
+date: 2026-08-06
+references:
+    - https://attack.mitre.org/techniques/T1059/001/
+tags:
+    - attack.execution
+    - attack.t1059.001
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection_image:
+        Image|endswith:
+            - '\powershell.exe'
+            - '\pwsh.exe'
+    selection_encoded_cmd:
+        CommandLine|contains:
+            - ' -e '
+            - ' -en '
+            - ' -enc '
+            - ' -enco '
+            - ' -encod '
+            - ' -encode '
+            - ' -encoded '
+            - ' -encodedc '
+            - ' -encodedco '
+            - ' -encodedcom '
+            - ' -encodedcomm '
+            - ' -encodedcomma '
+            - ' -encodedcomman '
+            - ' -encodedcommand '
+    condition: selection_image and selection_encoded_cmd
+falsepositives:
+    - Legitimate administrative or automation scripts that use -EncodedCommand for scheduled tasks or remote execution (tune/allow-list per environment).
+level: high
