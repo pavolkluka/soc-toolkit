@@ -5,6 +5,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **venv-setup/setup.sh**: Python venv bootstrap for the F6 toolkit layer.
+  Idempotent (a second run updates an existing venv in place rather than
+  recreating it); enforces a Python >= 3.10 guard before proceeding;
+  `--check-only` mode reports install status, including which individual
+  packages are missing, without mutating the venv.
+- **venv-setup/requirements.txt**: pinned dependency set for the F6 toolkit
+  layer (msticpy, jupyterlab, sigma-cli, pySigma-backend-QRadar-AQL, pandas,
+  matplotlib). Pins `msticpy==3.0.0`, not the `3.0.2` specified in
+  `handoff-f6-toolkit.md` §2 (deviation approved after QA caught it):
+  `msticpy>=3.0.1` requires `packaging>=26.2`, which conflicts with pySigma
+  0.11.x (required by `pySigma-backend-QRadar-AQL==0.3.2`, which pins
+  `pySigma<0.12`) requiring `packaging<25.0,>=24.1` — pip returns
+  `ResolutionImpossible` on 3.0.2. `msticpy==3.0.0` requires
+  `packaging>=24.0` and resolves cleanly; `msticpy.vis.timeline.display_timeline`
+  (needed by the TASK-12 timeline notebook) was confirmed still present and
+  importable in the built venv.
+- **docs/remnux-notes.md**: documented why `venv-setup/setup.sh` cannot run
+  on the REMnux VM (Python >= 3.10 requirement vs. REMnux 7's Python
+  3.8/3.9) — see "Python version limitation (F6 toolkit / venv-setup)".
+
 ### Changed
 
 - **README.md**: Support section replaced with Hydranode Lightning donation

@@ -1,0 +1,25 @@
+# Python dependencies for soc-toolkit (F6 toolkit layer)
+# Requires Python >= 3.10 (see setup.sh guard)
+#
+# NOTE: pcap-triage.py / windows-events-triage.py dependencies
+# (pyshark, scapy, dpkt, python-evtx, lxml) are OUT OF SCOPE for TASK-08.
+# They belong to TASK-06/TASK-07 (reserved future sessions) and must be
+# added there, not here.
+
+click
+rich
+requests
+pandas
+matplotlib          # notebook fallback vizualizácia (msticpy base ťahá bokeh, nie matplotlib)
+# msticpy 3.0.0 — NOT 3.0.2. Verified 2026-08-06: msticpy >=3.0.1 requires
+# packaging>=26.2, which is mutually exclusive with pysigma 0.11.x
+# (packaging<25.0,>=24.1) required by pysigma-backend-qradar-aql 0.3.2.
+# Pinning 3.0.2 makes this file unresolvable. 3.0.0 needs packaging>=24.0
+# and still provides msticpy.vis.timeline.display_timeline used by
+# notebooks/timeline-template.ipynb (TASK-12).
+msticpy==3.0.0
+jupyterlab==4.6.2
+# QRadar AQL toolchain — NEbumpovať bez kontroly pinov:
+# backend 0.3.2 vyžaduje pysigma <0.12 → sigma-cli musí ostať 1.0.6
+sigma-cli==1.0.6
+pysigma-backend-qradar-aql==0.3.2
