@@ -8,13 +8,14 @@ Usage:     soc-lookup <observable> [--type ip|domain|hash|url|generic]
                        [--playbook WB_Lookup] [--timeout 300] [--no-wait]
                        [--force]
 
-Tested on: py_compile / --help / doctest only (unit level). This script has
-           NEVER been run against a live IntelOwl or Yeti instance: per
-           handoff-f6-toolkit.md §3/§8/§9, those APIs are bound to
-           127.0.0.1 on the user's notebook and are unreachable from this
-           container or the REMnux VM used for QA. See the clearly delimited
-           "UNVERIFIED AGAINST LIVE API" block below for every value that
-           depends on a live-instance response shape.
+Tested on: Verified against live IntelOwl v6.7.0 and Yeti 2.5.1 on
+           2026-08-06 (handoff-f6-toolkit.md §8B, live acceptance criterion
+           1 — passed). py_compile / --help / doctest also pass (unit
+           level). Those workbench APIs are bound to 127.0.0.1 on the
+           user's notebook and remain unreachable from this container or
+           the REMnux VM used for QA, so automated re-testing can't be run
+           from here — see the "API-SHAPE-DEPENDENT VALUES" block below for
+           every value tied to a live-instance response shape.
 Version:   0.1.0
 Author:    Pavol Kluka | https://github.com/pavolkluka/soc-toolkit
 Date:      2026-08-06
@@ -217,17 +218,18 @@ def detect_type(value: str) -> str:
 
 
 # ============================================================================
-# UNVERIFIED AGAINST LIVE API -- START
+# API-SHAPE-DEPENDENT VALUES -- START
 #
-# soc-lookup has never been run against a live IntelOwl or Yeti instance:
-# per handoff-f6-toolkit.md §3/§8/§9, those APIs are bound to 127.0.0.1 on
-# the user's notebook and are unreachable from this container or the REMnux
-# VM used for QA. Every literal request/response field or key name that
-# could not be confirmed from handoff-f6-toolkit.md, the F5 handoff it
-# cites, or a reachable upstream source lives in this block — one item per
-# single-purpose function/constant, each tagged # TODO-VERIFY (handoff §3).
-# A post-live-test fix should only ever need to touch this block, never the
-# orchestration logic in yeti_branch() / intelowl_branch() / run_lookup().
+# Every literal request/response field or key name whose correctness
+# depends on the live IntelOwl/Yeti wire format lives in this block — one
+# item per single-purpose function/constant, each tagged # TODO-VERIFY
+# (handoff §3) with its live-test status (CONFIRMED / CONFIRMED-PARTIAL /
+# DISPROVEN, per the 2026-08-06 live acceptance run against IntelOwl
+# v6.7.0 and Yeti 2.5.1 — see handoff-f6-toolkit.md §8B and CHANGELOG.md
+# for the full results). Isolating these values here means that if a
+# future API version changes one of these shapes, the fix should only
+# ever need to touch this block, never the orchestration logic in
+# yeti_branch() / intelowl_branch() / run_lookup().
 # ============================================================================
 
 
@@ -558,7 +560,7 @@ def extract_analyzers_running(submit_response: dict[str, Any]) -> list[str]:
 
 
 # ============================================================================
-# UNVERIFIED AGAINST LIVE API -- END
+# API-SHAPE-DEPENDENT VALUES -- END
 # ============================================================================
 
 
@@ -725,8 +727,9 @@ def yeti_branch(base_url: str, apikey: str, observable: str, timeout: int) -> di
             # Full parsed JSON from /observables/search, kept alongside the
             # (candidate-key-derived) observables/entities lists above. This
             # is NOT debug output — do not strip it. extract_yeti_search_results()
-            # and extract_yeti_item_id() parse this response using unverified
-            # candidate key names (see the UNVERIFIED AGAINST LIVE API block).
+            # and extract_yeti_item_id() parse this response using the
+            # candidate key names tracked in the API-SHAPE-DEPENDENT VALUES
+            # block (their live-test status is CONFIRMED / DISPROVEN there).
             # If the real Yeti response shape differs, those lists silently
             # degrade to empty rather than raising, so without "raw" the
             # user's one live acceptance run (handoff §8B criterion 1) would

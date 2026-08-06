@@ -131,6 +131,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **lookup/soc-lookup.py**: corrected stale documentation in the module
+  docstring and comment block, which still stated the script had never been
+  run against a live IntelOwl or Yeti instance. The live acceptance run
+  (handoff §8B criterion 1) passed on 2026-08-06 against IntelOwl v6.7.0 and
+  Yeti 2.5.1. The isolation block is renamed from "UNVERIFIED AGAINST LIVE
+  API" to "API-SHAPE-DEPENDENT VALUES", since its contents are now verified
+  and its remaining purpose is to keep any future API-shape change to a
+  single-block edit. Comments only; no logic change.
 - **file-triage.sh v0.4.1**: triage-dynamic output no longer overwrites the
   partial malwoverview report with a bare error note on upstream crash. The
   report header and `analysis:` block (id, target, hashes, platform, resource,
