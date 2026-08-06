@@ -63,6 +63,24 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
   Full live-verification evidence (per-item confirmation status) lives in
   `handoff-f6-findings.md`, outside this repo.
+- **evtx/get-tools.sh**: downloads pinned forensic binaries into `evtx/bin/`
+  and clones SigmaHQ rules into `evtx/rules/`. Versions are header variables:
+  Hayabusa 4.0.0 (musl), Takajo 2.16.1, Chainsaw 2.16.3, DuckDB 1.4.4,
+  SigmaHQ/sigma tag `r2026-07-01`. Idempotent, `--check-only` reports
+  installed vs pinned without touching the network, sha256 of every archive
+  logged.
+- **evtx/evtx-triage.sh**: `-i <evtx_dir> [-o <output_base>]`, produces a
+  timestamped run directory with numbered outputs (`001-hayabusa-timeline.csv`,
+  `002-hayabusa-timeline.jsonl` for Takajo, `003-takajo-automagic/`,
+  `004-chainsaw-hunt/`) plus per-step logs. Confirms Takajo 2.16.1 ↔ Hayabusa
+  4.0.0 JSONL compatibility, listed as unconfirmed upstream in
+  `handoff-f6-toolkit.md` §9 — no Hayabusa 3.x downgrade fallback needed.
+  Acceptance run on 03-remnux-noble-202602 (Ubuntu 24.04.3, 2026-08-06) over
+  the full `Yamato-Security/hayabusa-sample-evtx` corpus (599 EVTX files):
+  exit 0 in ~100s, 32,377 timeline rows, 781 Takajo output files, 14,047
+  non-informational Hayabusa detections, 10,802 Chainsaw detections.
+- **.gitignore**: `evtx/bin/` and `evtx/rules/` excluded — downloaded
+  binaries and Sigma rules are never committed.
 
 ### Changed
 

@@ -2,6 +2,8 @@ CLAUDE.md
 .claude/
 temp/
 venv-setup/venv/
+evtx/bin/
+evtx/rules/
 *.pyc
 __pycache__/
 artifacts/
