@@ -29,6 +29,9 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   passes the full TASK-08 QA gate; the older REMnux 7 target
   (`03-remnux-7-202510`, Python 3.8.10) does not — see "Python version
   requirement (F6 toolkit / venv-setup)".
+- **.gitignore**: now also excludes `.claude/` (local Claude Code tooling and
+  agent scratch state, not project content), placed directly beneath the
+  existing `CLAUDE.md` rule for the same reason.
 
 ### Changed
 
