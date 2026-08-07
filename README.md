@@ -88,7 +88,10 @@ DNS/HTTP/TLS summary. Pairs with my network traffic analysis articles on Medium.
 ### windows-events-triage.py *(coming soon)*
 
 Windows Event Log (`.evtx`) analysis: suspicious logon events, process creation,
-privilege escalation indicators, lateral movement artifacts.
+privilege escalation indicators, lateral movement artifacts. A native Python
+parser (`python-evtx`) focused on those specific event categories, distinct
+from [`evtx/evtx-triage.sh`](#evtx-triagesh)'s external-binary-based broad
+detection coverage — for EVTX analysis today, use `evtx/evtx-triage.sh`.
 
 ---
 
@@ -103,6 +106,10 @@ cd soc-toolkit
 
 # Setup Python venv (for Python tools)
 ./venv-setup/setup.sh
+
+# Download EVTX toolchain binaries + Sigma rules (one-time, ~270 MB into
+# gitignored directories — only needed for evtx-triage.sh)
+./evtx/get-tools.sh
 ```
 
 ---

@@ -191,6 +191,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   already reports "does not appear to target a supported OS" (typically
   stripped or custom ELFs). This avoids a redundant ~30 s poll cycle that
   would produce an identical error output.
+- **README.md**: `windows-events-triage.py` *(coming soon)* blurb clarified —
+  previously read as duplicating the now-shipped `evtx/evtx-triage.sh`. Now
+  distinguishes the two (native Python parser for specific event categories
+  vs. evtx-triage.sh's external-binary-based broad detection) and points
+  readers wanting EVTX analysis today at `evtx/evtx-triage.sh`.
+- **README.md**: Setup section now includes `evtx/get-tools.sh` as a
+  one-time step (~270 MB, gitignored), previously documented only inside
+  the `evtx-triage.sh` tool section.
 
 ## [0.4.0] - 2026-04-19
 
