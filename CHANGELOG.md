@@ -199,6 +199,45 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **README.md**: Setup section now includes `evtx/get-tools.sh` as a
   one-time step (~270 MB, gitignored), previously documented only inside
   the `evtx-triage.sh` tool section.
+- **docs/atomic-validation.md**: rewritten from an unverified transcription
+  into a verified procedure after an end-to-end run on a Windows 10 Pro
+  (build 19045, 22H2) victim VM, PowerShell 5.1, on 2026-08-07. The
+  provenance note now states plainly what was and wasn't exercised:
+  confirmed is the Windows/PowerShell 5.1 install path and the EVTX/Sysmon
+  branch of detection confirmation; not confirmed is any Linux/pwsh
+  victim, and the QRadar-AQL branch of detection confirmation (no live
+  QRadar available for this run). Corrections made from the original
+  transcription:
+  - Install path is `C:\AtomicRedTeam` (atomics under `\atomics`, module
+    under `\invoke-atomicredteam`), not `~/AtomicRedTeam`.
+  - `powershell-yaml` is a required module that the `IEX (IWR ...)` +
+    `Install-AtomicRedTeam -getAtomics` path does not install; it must be
+    installed first (`Install-Module powershell-yaml -Scope CurrentUser
+    -Force`), or the module import fails with "The required module
+    'powershell-yaml' is not loaded."
+  - Re-running the installer against an existing `C:\AtomicRedTeam` is a
+    silent no-op ("No changes were made"); `-Force` is required to
+    reinstall.
+  - Added a connectivity precondition: the PowerShell Gallery / NuGet
+    bootstrap (`www.powershellgallery.com`, `go.microsoft.com`) must be
+    reachable in addition to GitHub, since these can be blocked
+    independently on a restricted victim; documented the `powershell-yaml`
+    GitHub-release fallback for that case.
+  - `-GetPrereqs`/`-CheckPrereqs` clarified as per-test, not universal
+    (T1059.001 tests 15 and 16 need the `AtomicTestHarnesses` module).
+  - `-Cleanup` clarified as conditional on the atomic defining a
+    `cleanup_command` (test 15 does not).
+  - Sysmon presence is now confirmed via the
+    `Microsoft-Windows-Sysmon/Operational` event log, not by service name
+    — the test VM ran Sysmon under a renamed service (`WinHealthMon`), a
+    common hardening/evasion choice that a literal `Sysmon` service-name
+    check would miss.
+
+  Added a worked example: the shipped
+  `detection/rules/encoded-powershell-command.yml` (`attack.t1059.001`) was
+  confirmed to fire on atomic test `T1059.001-15`'s captured Sysmon
+  EventID 1 command line (`-E` short-form encoded command), matching the
+  rule's `-e`..`-encodedcommand` prefix range.
 
 ## [0.4.0] - 2026-04-19
 
