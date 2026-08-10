@@ -97,9 +97,14 @@ Options:
 Behaviour:
   Idempotent — a tool already at the pinned version is skipped, not
   re-downloaded or re-cloned. Every downloaded archive's sha256sum is
-  logged. Binaries are made executable and stable symlinks (e.g.
-  bin/hayabusa/hayabusa) are created so evtx-triage.sh never encodes a
-  version number.
+  logged and verified against a pin; a mismatch aborts before anything is
+  unpacked. SigmaHQ/sigma is likewise verified by commit, not by its
+  mutable tag. Those pins are a trust-on-first-use baseline, not an
+  upstream-published checksum — none of these projects publishes one — so
+  they prove the asset has not changed since it was pinned, not that it
+  was authentic then. Binaries are made executable and stable symlinks
+  (e.g. bin/hayabusa/hayabusa) are created so evtx-triage.sh never encodes
+  a version number.
 
 Exit codes:
   0  success (or, with --check-only, everything matches the pins)
@@ -133,11 +138,35 @@ require_host_tools() {
     fi
 }
 
-log_sha256() {
-    local file="$1"
-    local sum
+### INTEGRITY PINS
+# Trust-on-first-use baseline, NOT an upstream-published checksum.
+# Ani jeden z týchto štyroch projektov nepublikuje checksum ani podpis medzi
+# release assetmi (overené 2026-08-06/08 cez GitHub API), takže nie je proti čomu
+# verifikovať. Tieto hodnoty boli spočítané z toho, čo GitHub vydal 2026-08-08.
+# ČO TO DOKAZUJE: že sa asset alebo tag odvtedy nezmenil.
+# ČO TO NEDOKAZUJE: že bol v tom momente autentický. Neinterpretuj ako dôkaz pôvodu.
+# Pri bumpe verzie treba prepočítať aj hash — inak inštalácia zlyhá, a to je zámer.
+EXPECTED_SHA256_HAYABUSA="04d4daf91ad0cc576654e985315f15e412a3ad460f2702f2a9dde3fbd1104a8b"
+EXPECTED_SHA256_TAKAJO="aac5e2de5f128b90f0202ef6b81ba3b046dec040d19f284a7e17cb5eaeb35a6e"
+EXPECTED_SHA256_CHAINSAW="b3cbddbdf3de55047a9b5df2909789b41b670d5812115d6128917afe5c615512"
+EXPECTED_SHA256_DUCKDB="09cc288295964d897b47665d1898e16e8ef176cae9ea615797fc136eae15bd5d"
+# SigmaHQ: pripnuté na commit, nie na tag — tag r2026-07-01 je mutovateľný.
+# Annotated tag object 19aee0af973becc96465791d9401272ca2841bf1 -> tento commit.
+SIGMA_COMMIT="552f3fee420ef232a8e5790c4fae591847e32347"
+
+# Verifies a downloaded file against its pin. log_sha256's logging is kept
+# (the sum in the log is useful), verification is added on top.
+verify_sha256() {
+    local file="$1" expected="$2" label="$3" sum
     sum="$(sha256sum "${file}" | awk '{print $1}')"
     log_info "  sha256sum: ${sum}  (${file##*/})"
+    if [[ "${sum}" != "${expected}" ]]; then
+        log_error "${label}: sha256 MISMATCH — refusing to install."
+        log_error "  expected: ${expected}"
+        log_error "  actual:   ${sum}"
+        exit 2
+    fi
+    log_info "  sha256 verified against pin."
 }
 
 ### --check-only MODE (no network calls)
@@ -204,6 +233,10 @@ run_check_only() {
         status="MISMATCH"; overall_rc=1
     elif [[ ! -d "${DIR_RULES_SIGMA}/rules" ]]; then
         status="BROKEN (marker OK, rules/ missing)"; overall_rc=1
+    elif [[ -d "${DIR_RULES_SIGMA}/.git" ]] \
+        && [[ "$(git -C "${DIR_RULES_SIGMA}" rev-parse HEAD 2>/dev/null)" != "${SIGMA_COMMIT}" ]]; then
+        # Local check only — git rev-parse makes no network call.
+        status="MISMATCH (marker OK, HEAD != pinned commit)"; overall_rc=1
     else
         status="OK"
     fi
@@ -231,7 +264,7 @@ install_hayabusa() {
     log_info "Hayabusa: downloading ${HAYABUSA_ASSET}..."
     local tmpzip="${TMP_DIR}/${HAYABUSA_ASSET}"
     curl -fSL -o "${tmpzip}" "${HAYABUSA_URL}"
-    log_sha256 "${tmpzip}"
+    verify_sha256 "${tmpzip}" "${EXPECTED_SHA256_HAYABUSA}" "Hayabusa"
 
     rm -rf "${DIR_BIN_HAYABUSA}"
     ensure_dir "${DIR_BIN_HAYABUSA}"
@@ -254,7 +287,7 @@ install_takajo() {
     log_info "Takajo: downloading ${TAKAJO_ASSET}..."
     local tmpzip="${TMP_DIR}/${TAKAJO_ASSET}"
     curl -fSL -o "${tmpzip}" "${TAKAJO_URL}"
-    log_sha256 "${tmpzip}"
+    verify_sha256 "${tmpzip}" "${EXPECTED_SHA256_TAKAJO}" "Takajo"
 
     rm -rf "${DIR_BIN_TAKAJO}"
     ensure_dir "${DIR_BIN_TAKAJO}"
@@ -278,7 +311,7 @@ install_duckdb() {
     log_info "DuckDB: downloading ${DUCKDB_ASSET}..."
     local tmpzip="${TMP_DIR}/${DUCKDB_ASSET}"
     curl -fSL -o "${tmpzip}" "${DUCKDB_URL}"
-    log_sha256 "${tmpzip}"
+    verify_sha256 "${tmpzip}" "${EXPECTED_SHA256_DUCKDB}" "DuckDB"
 
     ensure_dir "${DIR_BIN_LIB}"
     # Flat zip: duckdb.h, duckdb.hpp, libduckdb.so, libduckdb_static.a land
@@ -302,7 +335,7 @@ install_chainsaw() {
     log_info "Chainsaw: downloading ${CHAINSAW_ASSET}..."
     local tmptar="${TMP_DIR}/${CHAINSAW_ASSET}"
     curl -fSL -o "${tmptar}" "${CHAINSAW_URL}"
-    log_sha256 "${tmptar}"
+    verify_sha256 "${tmptar}" "${EXPECTED_SHA256_CHAINSAW}" "Chainsaw"
 
     rm -rf "${DIR_BIN_CHAINSAW}"
     ensure_dir "${DIR_BIN_CHAINSAW}"
@@ -325,6 +358,15 @@ clone_sigma() {
     rm -rf "${DIR_RULES_SIGMA}"
     ensure_dir "${DIR_RULES}"
     git clone --depth 1 --branch "${SIGMA_REF}" "${SIGMA_REPO_URL}" "${DIR_RULES_SIGMA}"
+    local got
+    got="$(git -C "${DIR_RULES_SIGMA}" rev-parse HEAD)"
+    if [[ "${got}" != "${SIGMA_COMMIT}" ]]; then
+        log_error "SigmaHQ/sigma: tag ${SIGMA_REF} no longer points at the pinned commit."
+        log_error "  expected: ${SIGMA_COMMIT}"
+        log_error "  actual:   ${got}"
+        rm -rf "${DIR_RULES_SIGMA}"
+        exit 2
+    fi
     echo "${SIGMA_REF}" > "${MARKER_SIGMA}"
     log_info "SigmaHQ/sigma ${SIGMA_REF} cloned: ${DIR_RULES_SIGMA}"
 }
