@@ -31,13 +31,16 @@ CHECK_PACKAGES=(msticpy jupyterlab sigma-cli pysigma-backend-qradar-aql pysigma)
 
 ### SELF-CONTAINED LOGGING HELPERS
 # (No sourcing of triage/common/utils.sh — venv-setup is standalone.)
+# All three write to STDERR, matching triage/common/utils.sh: log is
+# diagnostics, not data. Previously only log_error did, which made this
+# script's logging inconsistent with the rest of the toolkit.
 
 log_info() {
-    echo "[INFO] $*"
+    echo "[INFO] $*" >&2
 }
 
 log_warn() {
-    echo "[WARN] $*"
+    echo "[WARN] $*" >&2
 }
 
 log_error() {

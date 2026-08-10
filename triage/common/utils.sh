@@ -15,18 +15,22 @@ fi
 __SOC_TOOLKIT_UTILS_SH_LOADED=1
 
 ### Logging primitives
-# All log_* helpers write to stdout with a fixed prefix for easy grep/pipeline use.
+# Všetky log_* píšu na STDERR. Dôvod: stdout je v niektorých skriptoch
+# machine-consumable artefakt (detection/sigma-to-aql.sh generuje AQL na stdout,
+# rovnaký princíp ako lookup/soc-lookup.py s --json). Log na stdout by ho
+# kontaminoval. Nevracaj to na stdout — namiesto toho volaj skript s 2>&1,
+# ak chceš logy v súbore.
 
 log_info() {
-    echo "[INFO] $*"
+    echo "[INFO] $*" >&2
 }
 
 log_warn() {
-    echo "[WARN] $*"
+    echo "[WARN] $*" >&2
 }
 
 log_error() {
-    echo "[ERROR] $*"
+    echo "[ERROR] $*" >&2
 }
 
 ### Counter formatting

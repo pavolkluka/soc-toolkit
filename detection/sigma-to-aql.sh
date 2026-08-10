@@ -28,22 +28,6 @@ fi
 # shellcheck source=../triage/common/utils.sh
 source "${SCRIPT_DIR}/../triage/common/utils.sh"
 
-### LOGGING — redirect to stderr (local to this script only)
-# utils.sh's log_info/log_warn/log_error write to stdout, which is correct
-# for triage/file-triage.sh and evtx/evtx-triage.sh (already committed,
-# depended upon — utils.sh itself is NOT changed here). But this script's
-# stdout is a machine-consumable artifact (the generated AQL, meant for
-# copy-paste into the QRadar console, same principle as lookup/soc-lookup.py
-# sending rich tables to stderr so `| jq` gets clean JSON on stdout). Thin
-# local wrappers below rename the originals and re-point their output to
-# stderr, without touching utils.sh or its behaviour for other scripts.
-eval "$(declare -f log_info | sed '1s/^log_info/_base_log_info/')"
-eval "$(declare -f log_warn | sed '1s/^log_warn/_base_log_warn/')"
-eval "$(declare -f log_error | sed '1s/^log_error/_base_log_error/')"
-log_info() { _base_log_info "$@" >&2; }
-log_warn() { _base_log_warn "$@" >&2; }
-log_error() { _base_log_error "$@" >&2; }
-
 ### PYTHON VENV (sigma-cli + pysigma-backend-qradar-aql)
 VENV_DIR="${SCRIPT_DIR}/../venv-setup/venv"
 
