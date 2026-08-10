@@ -239,6 +239,78 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   EventID 1 command line (`-E` short-form encoded command), matching the
   rule's `-e`..`-encodedcommand` prefix range.
 
+#### SOC Workbench review batch (2026-08-10)
+
+Seven fixes from the SOC Workbench layer review, each committed atomically.
+
+- **evtx/get-tools.sh**: downloaded archives are now verified, not merely
+  logged. `log_sha256()` computed each sha256 and printed it while the
+  script held no expected value anywhere, so a swapped release asset would
+  have installed silently — over evidence, since these binaries run against
+  case data. `verify_sha256()` replaces it and aborts with exit 2 before
+  `unzip`/`tar` touches anything. **These pins are a trust-on-first-use
+  baseline, NOT upstream checksums:** none of the four projects (Hayabusa,
+  Takajo, Chainsaw, DuckDB) publishes a checksum or signature among its
+  release assets, verified via the GitHub API on 2026-08-06/08, so there is
+  nothing authoritative to verify against. They prove an asset has not
+  changed since it was pinned; they do **not** prove it was authentic when
+  pinned. Do not read them as proof of provenance. Bumping a version
+  requires recomputing its hash, by design.
+- **evtx/get-tools.sh**: SigmaHQ/sigma is pinned by commit
+  (`552f3fee420ef232a8e5790c4fae591847e32347`) instead of only by the
+  mutable tag `r2026-07-01`. `clone_sigma()` compares the cloned HEAD
+  against the pin and deletes the clone on mismatch; `--check-only` runs
+  the same comparison through a local `git rev-parse` and so still makes no
+  network calls.
+- **evtx/evtx-triage.sh**: a step is no longer reported as successful on the
+  strength of its log alone. `run_polled()` returns 0 when the tool exits 0
+  and the *log* is non-empty; it never inspects the artifact. A tool that
+  exited 0, logged verbosely and produced an empty or missing
+  `001-hayabusa-timeline.csv` was reported OK and the run finished 0 with
+  "EVTX triage complete." over an empty timeline. `report_step_rc()` now
+  checks the artifact, with a separate case for steps 003/004, which produce
+  directories rather than files. `run_polled()` is unchanged —
+  `triage/file-triage.sh` depends on it.
+- **lookup/soc-lookup.py**: `_truncate_for_display()` no longer lengthens the
+  string it is asked to shorten. Below `maxlen` 15 the head slice went
+  negative and cut from the end instead; `maxlen=10` over a 64-character
+  value returned 74 characters. Latent — the sole call site uses the default
+  40 — but a trap for the next caller.
+- **lookup/soc-lookup.py**: `detect_type()` no longer classifies a malformed
+  IPv4 as a domain. `detect_type("999.999.999.999")` returned `domain` and
+  would have been submitted to IntelOwl as a `domain` observable; RFC 1123
+  permits no all-numeric TLD. A typo'd IP pasted from a log therefore went
+  down the wrong analysis branch silently. Fixed alongside: the valid
+  absolute form `example.com.` was classified `generic` because the trailing
+  dot produced an empty final label. `--type` is unaffected — it bypasses
+  `detect_type` entirely.
+- **detection/sigma-to-aql.sh**: directory mode labels each emitted query
+  with `-- rule: <basename>`. Previously N rules produced N queries
+  concatenated with no marker of where one ended or which rule it came
+  from, despite the usage text offering stdout for copy-paste into QRadar.
+  The prefix is an AQL comment, so the stream stays paste-valid.
+- **detection/sigma-to-aql.sh**: an empty rule directory is now an error
+  (`exit 2`) rather than `exit 0` with "Converted: 0/0 succeeded, 0 failed."
+  A mistyped path or rules nested one level deeper looked exactly like a
+  clean run.
+
+### Changed (SOC Workbench review batch)
+
+- **triage/common/utils.sh**: all three `log_*` helpers write to **stderr**,
+  not stdout. Log is diagnostics, not data: `detection/sigma-to-aql.sh`
+  generates AQL on stdout, the same principle as `lookup/soc-lookup.py` with
+  `--json`, and logs on stdout contaminate that artifact. This removes the
+  `declare -f`/`sed`/`eval` wrapper `sigma-to-aql.sh` used to re-point the
+  sourced helpers, which depended on the exact output format of `declare
+  -f`. `venv-setup/setup.sh` is aligned the same way (previously only its
+  `log_error` used stderr).
+  **Observable change for existing callers:** `./file-triage.sh > run.log`
+  now yields an empty `run.log`; use `&> run.log` or `2>&1`. Both scripts
+  write their real outputs to files, so nothing else is affected.
+  **Still open:** the full REMnux re-test of `triage/file-triage.sh` and
+  `evtx/evtx-triage.sh` this change calls for has not been run — the dev
+  container has neither the REMnux tooling nor real EVTX samples.
+
 ## [0.4.0] - 2026-04-19
 
 ### Added
