@@ -105,7 +105,22 @@ report_step_rc() {
     local artifact="$3"
     local logfile="$4"
     case "${rc}" in
-        0) log_info "${label}: OK — artifact: ${artifact} (log: ${logfile})" ;;
+        0)
+            # run_polled rc=0 znamená len "nástroj skončil 0 a LOG je neprázdny"
+            # (utils.sh r. 98) — o artefakte nevypovedá nič. Overiť ho treba tu.
+            if [[ -d "${artifact}" ]]; then
+                if [[ -z "$(ls -A "${artifact}" 2>/dev/null)" ]]; then
+                    log_warn "${label}: tool reported success but output directory is empty: ${artifact}"
+                    FAILURES=$((FAILURES + 1))
+                    return
+                fi
+            elif [[ ! -s "${artifact}" ]]; then
+                log_warn "${label}: tool reported success but artifact is missing or empty: ${artifact}"
+                FAILURES=$((FAILURES + 1))
+                return
+            fi
+            log_info "${label}: OK — artifact: ${artifact} (log: ${logfile})"
+            ;;
         1) log_warn "${label}: tool exited non-zero — see log: ${logfile}"; FAILURES=$((FAILURES + 1)) ;;
         2) log_warn "${label}: exceeded time cap — terminated — see log: ${logfile}"; FAILURES=$((FAILURES + 1)) ;;
         3) log_warn "${label}: produced no log output — see log: ${logfile}"; FAILURES=$((FAILURES + 1)) ;;
