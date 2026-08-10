@@ -195,6 +195,31 @@ def detect_type(value: str) -> str:
     'url'
     >>> detect_type("not an observable!!")
     'generic'
+
+    A malformed IPv4 is not a domain — RFC 1123 does not permit an
+    all-numeric TLD, and without this it would be submitted to IntelOwl as
+    a `domain` observable:
+
+    >>> detect_type("999.999.999.999")
+    'generic'
+    >>> detect_type("10.0.0.256")
+    'generic'
+
+    An absolute (trailing-dot) FQDN still resolves as a domain:
+
+    >>> detect_type("example.com.")
+    'domain'
+
+    Regressions the change must not cause:
+
+    >>> detect_type("3com.com")
+    'domain'
+    >>> detect_type("xn--80ak6aa92e.com")
+    'domain'
+    >>> detect_type(".")
+    'generic'
+    >>> detect_type("")
+    'generic'
     """
     try:
         ipaddress.ip_address(value)
@@ -209,9 +234,16 @@ def detect_type(value: str) -> str:
     if split.scheme and split.netloc:
         return "url"
 
-    if "." in value and " " not in value:
-        labels = value.split(".")
-        if len(labels) >= 2 and all(_is_valid_hostname_label(label) for label in labels):
+    # One trailing dot is the absolute form of an FQDN — strip it before
+    # splitting, otherwise the final label is empty and never validates.
+    candidate = value[:-1] if value.endswith(".") else value
+    if "." in candidate and " " not in candidate:
+        labels = candidate.split(".")
+        if (
+            len(labels) >= 2
+            and all(_is_valid_hostname_label(label) for label in labels)
+            and not labels[-1].isdigit()
+        ):
             return "domain"
 
     return "generic"
