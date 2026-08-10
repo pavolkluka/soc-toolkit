@@ -88,6 +88,10 @@ carries the concatenated AQL of the batch), does not abort on individual
 failures, and prints a summary line (to stderr, alongside all other log
 output — stdout is reserved for AQL only in both modes).
 
+Each echoed block is introduced by a "-- rule: <name>" line naming the rule
+it came from, so a multi-rule batch stays attributable. That prefix is an
+AQL comment, so the whole stdout stream remains valid for copy-paste.
+
 Exit codes:
   0  success (all conversions succeeded)
   1  one or more conversions failed (batch mode), or bad arguments
@@ -130,7 +134,9 @@ convert_one() {
         printf '%s\n' "${aql}" > "${outfile}"
         log_info "Converted: ${rule_file} -> ${outfile} (pipeline: ${PIPELINE})"
         if [[ "${echo_stdout}" == "true" ]]; then
+            printf -- '-- rule: %s\n' "${base}"
             printf '%s\n' "${aql}"
+            printf '\n'
         fi
         rm -f "${stderr_file}"
         return 0
