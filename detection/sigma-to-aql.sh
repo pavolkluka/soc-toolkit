@@ -95,7 +95,8 @@ AQL comment, so the whole stdout stream remains valid for copy-paste.
 Exit codes:
   0  success (all conversions succeeded)
   1  one or more conversions failed (batch mode), or bad arguments
-  2  missing venv / missing tool / input path not found
+  2  missing venv / missing tool / input path not found / rule directory
+     contains no *.yml or *.yaml files
 EOF
 } >&2
 
@@ -250,7 +251,8 @@ RULE_FILES=("${INPUT_ARG}"/*.yml "${INPUT_ARG}"/*.yaml)
 shopt -u nullglob
 
 if [[ "${#RULE_FILES[@]}" -eq 0 ]]; then
-    log_warn "No *.yml/*.yaml rule files found in: ${INPUT_ARG}"
+    log_error "No *.yml/*.yaml rule files found in: ${INPUT_ARG}"
+    exit 2
 fi
 
 TOTAL=0
