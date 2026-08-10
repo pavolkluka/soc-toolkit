@@ -1019,10 +1019,32 @@ _YETI_VALUE_DISPLAY_MAXLEN = 40
 
 
 def _truncate_for_display(value: str, maxlen: int = _YETI_VALUE_DISPLAY_MAXLEN) -> str:
-    """Truncate `value` to `maxlen` chars for table display, keeping both ends visible."""
+    """Truncate `value` to `maxlen` chars for table display, keeping both ends visible.
+
+    The both-ends form costs 15 characters of overhead ("..." plus the
+    12-character tail). When `maxlen` cannot cover that overhead the head
+    slice would go negative and `value[:head]` would cut from the END,
+    returning a string LONGER than `maxlen` — so fall back to a plain head
+    truncation instead.
+
+    >>> _truncate_for_display("a" * 20, 40)
+    'aaaaaaaaaaaaaaaaaaaa'
+    >>> len(_truncate_for_display("b" * 64))
+    40
+    >>> _truncate_for_display("b" * 64, 16)
+    'b...bbbbbbbbbbbb'
+    >>> len(_truncate_for_display("b" * 64, 15))
+    15
+    >>> _truncate_for_display("b" * 64, 10)
+    'bbbbbbbbbb'
+    >>> len(_truncate_for_display("b" * 64, 1))
+    1
+    """
     if len(value) <= maxlen:
         return value
     head = maxlen - 3 - 12
+    if head <= 0:
+        return value[:maxlen]
     return f"{value[:head]}...{value[-12:]}"
 
 
