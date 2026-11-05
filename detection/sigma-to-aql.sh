@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
 # sigma-to-aql.sh — Convert Sigma detection rule(s) to IBM QRadar AQL using
-#                    sigma-cli + pysigma-backend-qradar-aql.
+#                    pySigma + pysigma-backend-qradar-aql (same backend and
+#                    pipelines as `sigma convert -t q_radar_aql`, driven by
+#                    detection/sigma_to_aql.py so that an environment field
+#                    mapping can be applied and the backend's |cidr crash is
+#                    worked around).
 #
-# Usage:   sigma-to-aql.sh <rule-file-or-dir> [--fields] [-o|--output-dir DIR]
+# Usage:   sigma-to-aql.sh <rule-file-or-dir> [--fields] [-m|--mapping FILE]
+#                          [--no-cidr-workaround] [-o|--output-dir DIR]
 #          sigma-to-aql.sh [-h|--help]
 #
 # Tested on: REMnux (Ubuntu 24.04.3 LTS, Python 3.12.3) and Debian 12
 #            (Python 3.11.2) — generated AQL verified byte-identical on both.
 # Version:   0.1.0
 # Author:    Pavol Kluka | https://github.com/pavolkluka/soc-toolkit
-# Date:      2026-08-06
+# Date:      2026-11-05 (0.2.0; 0.1.0 2026-08-06)
 # Platforms: Linux (bash 4+)
 
 set -euo pipefail
 
 ### CONSTANTS
 SCRIPT_NAME="sigma-to-aql.sh"
-SCRIPT_VERSION="0.1.0"
+SCRIPT_VERSION="0.2.0"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ### SHARED UTILITIES
@@ -43,11 +48,13 @@ OUTPUT_DIR_DEFAULT="${SCRIPT_DIR}/output"
 
 script_usage() {
     cat <<EOF
-Usage: ${SCRIPT_NAME} <rule-file-or-dir> [--fields] [-o|--output-dir DIR]
+Usage: ${SCRIPT_NAME} <rule-file-or-dir> [--fields] [-m|--mapping FILE]
+       [--no-cidr-workaround] [-o|--output-dir DIR]
        ${SCRIPT_NAME} [-h|--help]
 
 Converts one Sigma rule file, or every *.yml/*.yaml rule in a directory
-(non-recursive), to IBM QRadar AQL using sigma-cli's q_radar_aql target.
+(non-recursive), to IBM QRadar AQL with the q_radar_aql backend (pySigma),
+through detection/sigma_to_aql.py.
 
 Arguments:
   <rule-file-or-dir>       Sigma rule file, or directory of rule files
@@ -56,12 +63,18 @@ Arguments:
 Options:
   --fields                  Use the qradar-aql-fields pipeline instead of
                              the default qradar-aql-payload pipeline
+  -m, --mapping FILE        Extend the Sigma -> QRadar field table from a
+                             YAML file (e.g. detection/pipelines/qradar-lab.yml)
+                             so environment properties such as custom event
+                             properties are used instead of payload searches
+  --no-cidr-workaround      Keep the stock backend behaviour for |cidr values
+                             (every such rule then fails, backend 0.3.2 bug)
   -o, --output-dir DIR      Directory to write .aql output files into
                              (default: ${OUTPUT_DIR_DEFAULT})
   -h, --help                 Show this help and exit
 
-Requires venv-setup/setup.sh to have been run first (installs sigma-cli
-and pysigma-backend-qradar-aql into venv-setup/venv).
+Requires venv-setup/setup.sh to have been run first (installs pySigma,
+sigma-cli and pysigma-backend-qradar-aql into venv-setup/venv).
 
 Single-file mode writes <output-dir>/<rule-basename>.aql and also echoes
 the generated AQL to stdout for copy-paste into the QRadar console.
@@ -108,12 +121,12 @@ convert_one() {
     base="$(rule_basename "${rule_file}")"
     outfile="${OUTPUT_DIR}/${base}.aql"
 
-    # sigma-cli writes its "Parsing Sigma rules" progress banner to stderr
-    # and the actual AQL to stdout — keep them separate so the .aql file
-    # (and the copy-paste-to-QRadar stdout echo) only ever contains AQL.
+    # The engine writes diagnostics and pySigma warnings to stderr and the
+    # actual AQL to stdout — keep them separate so the .aql file (and the
+    # copy-paste-to-QRadar stdout echo) only ever contains AQL.
     stderr_file="$(mktemp)"
     rc=0
-    aql="$(sigma convert -t "${SIGMA_TARGET}" -p "${PIPELINE}" "${rule_file}" 2>"${stderr_file}")" || rc=$?
+    aql="$(python3 "${ENGINE}" --pipeline "${ENGINE_PIPELINE}" "${ENGINE_OPTS[@]}" "${rule_file}" 2>"${stderr_file}")" || rc=$?
 
     if [[ "${rc}" -eq 0 ]]; then
         printf '%s\n' "${aql}" > "${outfile}"
@@ -136,6 +149,8 @@ convert_one() {
 INPUT_ARG=""
 PIPELINE="${PIPELINE_DEFAULT}"
 OUTPUT_DIR="${OUTPUT_DIR_DEFAULT}"
+MAPPING_FILE=""
+CIDR_WORKAROUND="true"
 
 if [[ "$#" -eq 0 ]]; then
     script_usage
@@ -146,6 +161,19 @@ while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --fields)
             PIPELINE="${PIPELINE_FIELDS}"
+            shift
+            ;;
+        -m|--mapping)
+            if [[ -z "${2:-}" ]]; then
+                log_error "Option $1 requires an argument."
+                script_usage
+                exit 1
+            fi
+            MAPPING_FILE="$2"
+            shift 2
+            ;;
+        --no-cidr-workaround)
+            CIDR_WORKAROUND="false"
             shift
             ;;
         -o|--output-dir)
@@ -210,12 +238,44 @@ if ! command -v sigma &>/dev/null; then
     exit 2
 fi
 
+### ENGINE SETUP
+ENGINE="${SCRIPT_DIR}/sigma_to_aql.py"
+if [[ ! -f "${ENGINE}" ]]; then
+    log_error "Conversion engine not found: ${ENGINE}"
+    exit 2
+fi
+# The engine names pipelines by their short form.
+case "${PIPELINE}" in
+    "${PIPELINE_FIELDS}") ENGINE_PIPELINE="fields" ;;
+    *)                    ENGINE_PIPELINE="payload" ;;
+esac
+ENGINE_OPTS=()
+if [[ -n "${MAPPING_FILE}" ]]; then
+    if [[ ! -f "${MAPPING_FILE}" ]]; then
+        log_error "Mapping file not found: ${MAPPING_FILE}"
+        exit 2
+    fi
+    ENGINE_OPTS+=(--mapping "${MAPPING_FILE}")
+fi
+if [[ "${CIDR_WORKAROUND}" == "false" ]]; then
+    ENGINE_OPTS+=(--no-cidr-workaround)
+fi
+# Fail early (exit 2) if the toolchain cannot parse a `not` condition —
+# that is the pyparsing pin problem, not a bad rule.
+if ! python3 "${ENGINE}" --self-check 2>/dev/null; then
+    log_error "Toolchain self-check failed (see: python3 ${ENGINE} --self-check)."
+    log_error "Re-run venv-setup/setup.sh — see docs/tool-deps.md, pyparsing upper bound."
+    exit 2
+fi
+
 ### OUTPUT DIRECTORY SETUP
 ensure_dir "${OUTPUT_DIR}"
 
 log_info "${SCRIPT_NAME} v${SCRIPT_VERSION}"
 log_info "Target:   ${SIGMA_TARGET}"
 log_info "Pipeline: ${PIPELINE}"
+log_info "Mapping:  ${MAPPING_FILE:-(backend defaults only)}"
+log_info "CIDR workaround: ${CIDR_WORKAROUND}"
 log_info "Output:   ${OUTPUT_DIR}"
 echo "" >&2
 

@@ -1,0 +1,17 @@
+title: Fixture - selection with a not filter
+id: 7c0a6f6e-3d0b-4c3e-9d5e-1a2b3c4d5e01
+status: test
+description: Exercises a `not` condition, which fails under pyparsing 3.3.3 (docs/tool-deps.md).
+author: Pavol Kluka
+date: 2026-11-05
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\certutil.exe'
+        CommandLine|contains: '-urlcache'
+    filter_updates:
+        ParentImage|endswith: '\wuauclt.exe'
+    condition: selection and not filter_updates
+level: medium

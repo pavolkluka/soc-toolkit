@@ -1,0 +1,19 @@
+title: Fixture - destination IP outside private ranges
+id: 7c0a6f6e-3d0b-4c3e-9d5e-1a2b3c4d5e02
+status: test
+description: Exercises |cidr values, which crash backend 0.3.2 without the workaround.
+author: Pavol Kluka
+date: 2026-11-05
+logsource:
+    category: network_connection
+    product: windows
+detection:
+    selection:
+        Image|endswith: '\powershell.exe'
+    filter_private:
+        DestinationIp|cidr:
+            - '10.0.0.0/8'
+            - '172.16.0.0/12'
+            - '192.168.0.0/16'
+    condition: selection and not filter_private
+level: medium

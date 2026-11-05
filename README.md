@@ -63,6 +63,10 @@ pysigma-backend-qradar-aql) — see
 
 ```bash
 ./detection/sigma-to-aql.sh detection/rules/encoded-powershell-command.yml
+# with the lab's custom event properties (SysmonQueryName, sourceip):
+./detection/sigma-to-aql.sh detection/rules -m detection/pipelines/qradar-lab.yml
+# golden-output tests for the converter:
+./detection/tests/run-tests.sh
 ```
 
 ### timeline-template.ipynb

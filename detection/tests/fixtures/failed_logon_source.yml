@@ -1,0 +1,15 @@
+title: Fixture - failed logon from a specific source
+id: 7c0a6f6e-3d0b-4c3e-9d5e-1a2b3c4d5e04
+status: test
+description: Exercises IpAddress on 4625, unsupported by the backend and mapped to the native sourceip column.
+author: Pavol Kluka
+date: 2026-11-05
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+        IpAddress: '172.16.56.12'
+    condition: selection
+level: low

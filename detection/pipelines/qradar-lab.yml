@@ -1,0 +1,34 @@
+# qradar-lab.yml — Sigma field -> QRadar property mapping for the QRadar CE lab.
+#
+# Read by detection/sigma_to_aql.py --mapping (and sigma-to-aql.sh -m). Each
+# entry is added to the pySigma-backend-QRadar-AQL field table, so the Sigma
+# field on the left is rendered as the QRadar property on the right instead of
+# being treated as "unsupported" (payload pipeline: degraded to a payload
+# search; fields pipeline: rule refused).
+#
+# Only fields verified against lab exports go here (soc-agent-evals dataset,
+# 72 offense exports, 2026-11-05). A property that does not exist on the
+# target QRadar makes the AQL fail at run time, which is worse than a payload
+# search — add entries only after checking Admin -> Custom Event Properties
+# or a native column.
+#
+# Backend defaults that already fit the lab (Windows DSM via WinCollect,
+# verified populated on Sysmon EID 1 and Security 4688):
+#   Image -> "Process Path"/"Process Name", CommandLine -> Command,
+#   ParentImage -> "Parent Process Path", ParentCommandLine -> "Parent Command",
+#   TargetUserName -> "Target Username", LogonType -> "Logon Type",
+#   EventID -> "Event ID", DestinationIp -> destinationip,
+#   DestinationPort -> destinationport.
+#
+# Verified gaps the backend does not cover:
+#   QueryName  (Sysmon EID 22)  -> only in the lab CEP SysmonQueryName
+#   IpAddress  (Security 4624/4625) -> native sourceip column (srcIp in exports)
+#
+# Not mapped on purpose:
+#   SubStatus (4625)     -> no property; payload pipeline falls back to payload LIKE
+#   DestinationHostname  -> backend maps "Destination Hostname", empty on EID 3 in lab
+#   Initiated (EID 3)    -> backend maps Initiated, not verified as a property [VERIFY]
+#   SubjectUserName      -> not verified
+field_mapping:
+  QueryName: SysmonQueryName
+  IpAddress: sourceip

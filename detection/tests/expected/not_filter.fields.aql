@@ -1,0 +1,1 @@
+SELECT * FROM events WHERE devicetype=12 AND ((LOWER("Process Path") LIKE '%\certutil.exe' OR LOWER("Process Name") LIKE '%\certutil.exe') AND LOWER(Command) LIKE '%-urlcache%') AND (NOT(LOWER("Parent Process Path") LIKE '%\wuauclt.exe'))

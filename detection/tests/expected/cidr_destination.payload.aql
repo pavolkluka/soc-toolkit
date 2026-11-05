@@ -1,0 +1,1 @@
+SELECT * FROM events WHERE devicetype=12 AND (LOWER("Process Path") LIKE '%\powershell.exe' OR LOWER("Process Name") LIKE '%\powershell.exe') AND (NOT((INCIDR('10.0.0.0/8', destinationip) OR INCIDR('172.16.0.0/12', destinationip) OR INCIDR('192.168.0.0/16', destinationip))))

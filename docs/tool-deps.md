@@ -208,9 +208,48 @@ those pins, it does not set them. Do not install the backend with
 plugin-manager install would pull an incompatible pySigma version and break
 reproducibility.
 
+### Conversion engine (0.2.0)
+
+Since 0.2.0 `sigma-to-aql.sh` no longer shells out to `sigma convert`; it
+runs `detection/sigma_to_aql.py`, which drives the same pySigma backend and
+pipelines through the library API. On a 175-rule SigmaHQ sample (process
+creation, security, DNS, network) the engine's output was byte-identical to
+`sigma convert` in all 299 conversions where both succeed, and both fail on
+the same 51 (2026-11-05). The engine exists for two things sigma-cli cannot
+do:
+
+- **`-m|--mapping FILE`** extends the backend's Sigma → QRadar field table
+  from a YAML file (`field_mapping: {SigmaField: QRadarProperty}`), so
+  environment properties are used instead of a payload search. The lab file
+  is `detection/pipelines/qradar-lab.yml` (`QueryName → SysmonQueryName`,
+  `IpAddress → sourceip`); add entries only for properties that exist on the
+  target QRadar, a missing property makes the AQL fail at run time. The
+  mapping is applied to the one module-level dict the backend's pipelines
+  share, so the fields pipeline accepts the field and the payload pipeline
+  stops degrading it.
+- **CIDR workaround** — backend 0.3.2 crashes on every `|cidr` value
+  (`'SigmaCIDRExpression' object has no attribute 'contains_special'`, in
+  `HostFieldsValueTransformation.apply_value`) although it can render
+  `INCIDR('10.0.0.0/8', destinationip)`. The engine guards that method so
+  non-string values pass through; `--no-cidr-workaround` restores the stock
+  crash. 23 of 51 SigmaHQ `network_connection` rules convert only with the
+  workaround. Issue to be filed upstream (IBM/pySigma-backend-QRadar-AQL);
+  the repository has had no release since 0.3.2.
+
+Before converting, the script runs `sigma_to_aql.py --self-check` (a rule
+with `not` through both pipelines) and exits 2 if that fails — that is the
+pyparsing problem above, not a bad rule.
+
+Tests: `detection/tests/run-tests.sh` converts four fixtures (own rules, not
+SigmaHQ copies) and compares the AQL byte for byte with
+`detection/tests/expected/`; three negative cases assert the stock failures
+(`--no-cidr-workaround`, fields pipeline without mapping). `--update`
+rewrites the expected files after a reviewed change.
+
 ### Conversion target
 
-`sigma-to-aql.sh` calls `sigma convert -t q_radar_aql ...`. This corrects
+`sigma_to_aql.py` uses the `q_radar_aql` backend; the original script called
+`sigma convert -t q_radar_aql ...`. This corrects
 `handoff-f6-toolkit.md` §5, which gives the target identifier as
 `ibm-qradar-aql` — sigma-cli rejects that value outright:
 
@@ -264,9 +303,18 @@ installed pyparsing version. A venv built before the pin existed may hold
   specification features: no correlation rules, no newer field modifiers.
   Rules under `detection/rules/` must stay in classic single-rule form.
 - The IBM QRadar AQL backend is effectively unmaintained — 0.3.2 (2024) is
-  the latest release, and it pins `pysigma<0.12`, which is why sigma-cli
-  cannot be upgraded past 1.0.6. If it breaks, a community fork is the
-  likely replacement path.
+  the latest release (still, 2026-11-05), and it pins `pysigma<0.12`, which
+  is why sigma-cli cannot be upgraded past 1.0.6. If it breaks, a community
+  fork is the likely replacement path.
+- Unmapped Sigma fields (`IpAddress`, `SubStatus`, `SubjectUserName`,
+  `QueryName`, `Protocol`, `Channel`, `Provider_Name`, …) are refused by the
+  fields pipeline and degraded to `LOWER(UTF8(payload)) LIKE '%value%'` by
+  the payload pipeline — slow and matching anywhere in the payload. Use a
+  mapping file for the ones your QRadar can serve.
+- Numbers measured on SigmaHQ `rules/windows` (commit `b510129`, pyparsing
+  3.3.0, payload pipeline): process_creation 1187/1193, dns_query 23/23,
+  builtin/security 135/146, network_connection 27/51 (CIDR) — 50/51 with
+  the workaround. See `docs/sigma-qradar-limits.md`.
 
 ### Output
 

@@ -7,6 +7,22 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **detection/sigma_to_aql.py**: pySigma conversion engine behind
+  `sigma-to-aql.sh` (same `q_radar_aql` backend and pipelines as
+  `sigma convert`; byte-identical on a 175-rule SigmaHQ sample). Adds
+  `--mapping FILE` to extend the backend's Sigma → QRadar field table with
+  environment properties, a workaround for the backend's `|cidr` crash
+  (`--no-cidr-workaround` restores stock behaviour) and `--self-check`.
+- **detection/pipelines/qradar-lab.yml**: field mapping for the QRadar CE
+  lab, verified against lab exports: `QueryName → SysmonQueryName` (Sysmon
+  EID 22 is only parsed by that custom event property) and
+  `IpAddress → sourceip` (4624/4625). Backend defaults for process fields
+  (`Command`, `Process Path`, `Parent Command`, …) were verified populated
+  on Sysmon EID 1 and Security 4688 and need no mapping.
+- **detection/tests/run-tests.sh**: golden-output tests for the converter
+  (four own fixtures × pipelines/mapping, three negative cases); `--update`
+  rewrites expected files.
+
 - **venv-setup/setup.sh**: Python venv bootstrap for the F6 toolkit layer.
   Idempotent (a second run updates an existing venv in place rather than
   recreating it); enforces a Python >= 3.10 guard before proceeding;
@@ -150,6 +166,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sigma-to-aql.sh sections.
 
 ### Changed
+
+- **detection/sigma-to-aql.sh** 0.2.0: converts through
+  `detection/sigma_to_aql.py` instead of calling `sigma convert`; new
+  `-m|--mapping FILE` and `--no-cidr-workaround` options; runs the engine
+  self-check first and exits 2 when the toolchain cannot parse a `not`
+  condition. Output, exit codes and directory mode are unchanged.
 
 - **README.md**: Support section replaced with Hydranode Lightning donation
   button (`images/hydranode_donation_button_black.png`) wrapped in an HTML

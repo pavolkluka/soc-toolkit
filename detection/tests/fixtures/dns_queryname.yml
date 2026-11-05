@@ -1,0 +1,14 @@
+title: Fixture - DNS query to a suspicious domain
+id: 7c0a6f6e-3d0b-4c3e-9d5e-1a2b3c4d5e03
+status: test
+description: Exercises QueryName, unsupported by the backend and mapped to the lab CEP SysmonQueryName.
+author: Pavol Kluka
+date: 2026-11-05
+logsource:
+    category: dns_query
+    product: windows
+detection:
+    selection:
+        QueryName|endswith: '.example-c2.test'
+    condition: selection
+level: medium
