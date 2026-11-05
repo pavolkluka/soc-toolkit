@@ -7,6 +7,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **docs/sigma-qradar-limits.md**: measured conversion rates of SigmaHQ
+  `rules/windows` through the pinned toolchain, the backend limits that
+  remain (unmapped fields, CIDR, no correlations, `devicetype=12`), which
+  normalized Windows properties the QRadar CE lab actually populates per
+  event type, and the five rules prepared for the first lab run.
+
 - **detection/sigma_to_aql.py**: pySigma conversion engine behind
   `sigma-to-aql.sh` (same `q_radar_aql` backend and pipelines as
   `sigma convert`; byte-identical on a 175-rule SigmaHQ sample). Adds

@@ -124,6 +124,7 @@ cd soc-toolkit
 - [Tool Dependencies](docs/tool-deps.md)
 - [REMnux Notes](docs/remnux-notes.md)
 - [Atomic Validation Workflow](docs/atomic-validation.md)
+- [Sigma → QRadar AQL limits (lab measurements)](docs/sigma-qradar-limits.md)
 
 ---
 
