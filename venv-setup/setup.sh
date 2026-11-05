@@ -26,8 +26,10 @@ REQUIREMENTS="${SCRIPT_DIR}/requirements.txt"
 
 # Packages whose versions --check-only reports (pinned in requirements.txt,
 # plus pysigma which is a transitive dependency resolved by pip from the
-# sigma-cli / pysigma-backend-qradar-aql pins — not listed explicitly).
-CHECK_PACKAGES=(msticpy jupyterlab sigma-cli pysigma-backend-qradar-aql pysigma)
+# sigma-cli / pysigma-backend-qradar-aql pins — not listed explicitly —
+# and pyparsing, whose upper bound in requirements.txt keeps pySigma's
+# condition parser working; see docs/tool-deps.md).
+CHECK_PACKAGES=(msticpy jupyterlab sigma-cli pysigma-backend-qradar-aql pysigma pyparsing)
 
 ### SELF-CONTAINED LOGGING HELPERS
 # (No sourcing of triage/common/utils.sh — venv-setup is standalone.)

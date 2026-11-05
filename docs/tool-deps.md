@@ -200,6 +200,7 @@ here.
 |------|-------------|---------|---------|
 | sigma-cli | sigma-cli | 1.0.6 | Sigma rule conversion CLI |
 | pysigma-backend-qradar-aql | pysigma-backend-qradar-aql | 0.3.2 | IBM QRadar AQL backend for sigma-cli (resolves pySigma to 0.11.23) |
+| pyparsing | pyparsing | <3.3.3 (upper bound) | Transitive dependency of pySigma; 3.3.3 breaks `not` conditions — see below |
 
 Pinned in `venv-setup/requirements.txt` (TASK-08) — this section documents
 those pins, it does not set them. Do not install the backend with
@@ -234,6 +235,28 @@ appears on an unmapped field: a rule using `Description` converts cleanly
 under `qradar-aql-payload` (as a payload search) but fails under
 `qradar-aql-fields` with `field 'Description' is not supported`. Payload is
 the default because of that failure mode.
+
+### pyparsing upper bound (added 2026-11-05)
+
+pySigma 0.11.x parses rule conditions with pyparsing and only requires
+`pyparsing>=3.1,<4.0`. pyparsing 3.3.3 changed something that pySigma
+0.11.23 does not survive: every rule whose `condition` contains `not`
+(`selection and not filter`, `all of selection_* and not 1 of filter_*`)
+fails inside pySigma itself, before the backend is reached:
+
+```
+TypeError: 'str' object is not callable (while converting rule None)
+```
+
+Rules without `not` — including `detection/rules/encoded-powershell-command.yml`
+— convert fine, which is why the script did not show the problem until a
+SigmaHQ batch was run. Measured on SigmaHQ `rules/windows` (commit `b510129`):
+with pyparsing 3.3.3 the payload pipeline converted 888/1193 process_creation
+rules; with 3.3.0 it converted 1187/1193. Versions 3.1.4, 3.2.3, 3.3.0, 3.3.1
+and 3.3.2 all parse `not` correctly; 3.3.3 does not. `requirements.txt`
+therefore pins `pyparsing<3.3.3`, and `setup.sh --check-only` reports the
+installed pyparsing version. A venv built before the pin existed may hold
+3.3.3 — re-run `setup.sh` to downgrade it.
 
 ### Known limitations
 

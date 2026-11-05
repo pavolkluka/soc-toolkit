@@ -168,6 +168,16 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **venv-setup/requirements.txt**: pin `pyparsing<3.3.3`. pyparsing 3.3.3
+  breaks pySigma 0.11.x condition parsing, so every Sigma rule with `not`
+  in its condition failed in `detection/sigma-to-aql.sh` with
+  `TypeError: 'str' object is not callable` (SigmaHQ process_creation:
+  888/1193 converted instead of 1187/1193). pySigma's own bound is only
+  `<4.0`, so a fresh venv picked up the broken release. `setup.sh
+  --check-only` now also reports the pyparsing version. Verified against
+  pyparsing 3.1.4–3.3.2 (OK) and 3.3.3 (FAIL); details in
+  `docs/tool-deps.md`.
+
 - **lookup/soc-lookup.py**: corrected stale documentation in the module
   docstring and comment block, which still stated the script had never been
   run against a live IntelOwl or Yeti instance. The live acceptance run
