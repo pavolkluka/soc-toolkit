@@ -173,6 +173,14 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **docs/sigma-qradar-limits.md**: §4 records the lab run of 2026-11-07 (six
+  rules, one positive case each in the lab, all matched; the failed-logon-source
+  rule verified through a control query without its `NOT`) and what it showed:
+  Sysmon EID 1 and 4688 both match process rules, conditions on properties the
+  lab lacks (`Status`, `Filename`) fail silently, WinCollect writes SIDs as
+  names, `Process Name` has no path, `sourceip` of a local 4625 is the host
+  address, Sigma `%VAR%` values become LIKE wildcards, generated AQL has no
+  time clause. §2: `INCIDR` and `LOWER(sourceip)` confirmed in the lab.
 - **detection/sigma-to-aql.sh** 0.2.0: converts through
   `detection/sigma_to_aql.py` instead of calling `sigma convert`; new
   `-m|--mapping FILE` and `--no-cidr-workaround` options; runs the engine
